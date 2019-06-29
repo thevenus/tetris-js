@@ -5,9 +5,21 @@
     border-radius: 10px;
 
 }
+
 #board {
     border: 1px solid black;
     float: right;
     margin: 50px;
     border-radius: 1px;
+}
+
+#scoreboard {
+    float:left;
+    margin: 50px 50px;
+}
+
+.title{
+    float: left;
+    margin: 50px 10px;
+
 }
