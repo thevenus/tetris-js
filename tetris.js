@@ -1,3 +1,4 @@
+// Constants 
 const cvs = document.getElementById("board"),
     ctx = cvs.getContext("2d");
     ctx.scale(20,20);
@@ -8,56 +9,36 @@ var Tetromino = {
     y: 0,
     shapeNumber: random(0,7),
     blockNumber: random(0,4), 
-}
+};
 
+
+// Board Matrix 
 var board = [];
 resetBoard();
 
+var score = 0;
+
+//------------------------------------------------------------------
+// HELPER FUNCTIONS 
+//------------------------------------------------------------------
+
 function random(min, max) { return min + Math.floor(Math.random()*(max-min))       }
 
-function pickLocation(piece) {
-    piece.x = random(0,6);
-    piece.y = 0;
-}
-
-function resetBoard(){
-    board = [];
-    for (let i = 0; i < 20; i++){
-        board.push(new Array(10).fill(null));
-    }
-}
-function resetPiece(piece){
-    pickLocation(piece);
-    piece.shapeNumber = random(0,7);
-    piece.blockNumber = random(0,4);
-    if (collide(board, piece)){
-        resetBoard();
-        pickLocation(piece);
-    }
-
-}
-
 function collide(board, piece){
-    let map = shapes[piece.shapeNumber].blocks[piece.blockNumber];
-    for (let y = 0; y < map.length; ++y) {
-        for (let x = 0; x < map[y].length; ++x) {
-            if (map[y][x] !== 0 &&
+    // Collision detection function 
+    let shape = shapes[piece.shapeNumber].blocks[piece.blockNumber];
+
+    for (let y = 0; y < shape.length; ++y) {
+        for (let x = 0; x < shape[y].length; ++x) {
+            if (shape[y][x] !== 0 &&
                (board[y + piece.y] &&
                 board[y + piece.y][x + piece.x]) !== null) {
                 return true;
             }
         }
     }
-    return false;
-}
 
-function updateBoard(){
-    for (let i = 0; i < board.length; i++){
-        if (!board[i].includes(null)){
-            board.splice(i, 1);
-            board.unshift(new Array(10).fill(null));
-        }
-    }
+    return false;
 }
 
 function merge(board, piece){
@@ -71,7 +52,6 @@ function merge(board, piece){
     });
 }
 
-
 function drawBlock(x, y, color){
     ctx.fillStyle = color;
     ctx.strokeStyle = 'black';
@@ -80,17 +60,28 @@ function drawBlock(x, y, color){
     ctx.fillRect(x, y, 1, 1);
 }
 
-function drawPiece(piece){
-    let map = shapes[piece.shapeNumber].blocks[piece.blockNumber] || board;
-    let color = shapes[piece.shapeNumber].color || 'black';
-    map.forEach( (row, r) => {
-        row.forEach( (block, b) => {
-            if (block === 1){
-                drawBlock(b + piece.x, r + piece.y, color);
-            }
-        });
-        
-    });
+
+//------------------------------------------------------------------
+// BOARD FUNCTIONS 
+//------------------------------------------------------------------
+
+function resetBoard(){
+    board = [];
+    for (let i = 0; i < 20; i++){
+        board.push(new Array(10).fill(null));
+    }
+}
+
+function updateBoard(){
+    // If line is full 
+    // it clears this line
+    for (let i = 0; i < board.length; i++){
+        if (!board[i].includes(null)){
+            board.splice(i, 1);
+            board.unshift(new Array(10).fill(null));
+            score+=10;
+        }
+    }
 }
 
 function drawBoard(board){
@@ -105,8 +96,13 @@ function drawBoard(board){
     });
 }
 
+
+
+// PIECE FUNCTIONS -=-=-=--=-=-=--=-=-=--=-=-=--=-=-=--=-=-=--=-=-=-
+
 function drop(piece){
     piece.y++;
+   
     if (collide(board, piece)){           
         piece.y--;
         merge(board, piece);
@@ -116,15 +112,22 @@ function drop(piece){
     dropCounter = 0;
 }
 
-function rotate(piece){
-    let map = shapes[piece.shapeNumber].blocks[piece.blockNumber];
+function rotate(piece){    
     if (piece.blockNumber !== 3){
         piece.blockNumber++;
+        if (collide(board, piece)){
+            piece.blockNumber--;
+        }
     }
+
     else{
         piece.blockNumber = 0;
+        if (collide(board, piece)){
+            piece.blockNumber = 3;
+        }
     }
 }
+
 
 function draw(){
     ctx.clearRect(0,0,200,400);
@@ -132,6 +135,39 @@ function draw(){
     drawBoard(board);
 }
 
+
+function resetPiece(piece){
+    pickLocation(piece);
+    piece.shapeNumber = random(0,7);
+    piece.blockNumber = random(0,4);
+    if (collide(board, piece)){
+        resetBoard();
+        pickLocation(piece);
+        score = 0;
+    }
+}
+function pickLocation(piece) {
+    // TODO: implementing better location picker 
+    piece.x = random(0, 6);
+    piece.y = 0;
+}
+function drawPiece(piece){
+    let map = shapes[piece.shapeNumber].blocks[piece.blockNumber] || board;
+    let color = shapes[piece.shapeNumber].color || 'black';
+    map.forEach( (row, r) => {
+        row.forEach( (block, b) => {
+            if (block === 1){
+                drawBlock(b + piece.x, r + piece.y, color);
+            }
+        });
+        
+    });
+}
+
+
+
+
+// Game Loop
 var lastTime = 0;
 var dropInterval = 600;
 var dropCounter = 0;
@@ -143,7 +179,8 @@ function update(time = 0){
     if (dropCounter > dropInterval){
         drop(current);
     }
-    
+
+    document.getElementById("scoreboard").innerHTML = score;
     updateBoard();
     draw();
     lastTime = time;
@@ -151,17 +188,26 @@ function update(time = 0){
     requestAnimationFrame(update);
 }
 
-var current = Object.create(Tetromino);
+
+
+var current = Object.create(Tetromino),
+    next = Object.create(Tetromino);
 
 document.addEventListener("keydown", (event)=>{
     if (event.keyCode === 37){
         current.x--;
+        if (collide(board, current)){
+            current.x++;
+        }
     }
-    else if (event.keyCode === 38){
+    else if (event.keyCode === 38 && !collide(board, current)){
         rotate(current);
     }
     else if (event.keyCode === 39){
         current.x++;
+        if (collide(board, current)){
+            current.x--;
+        }
     }
     else if(event.keyCode === 40){
         drop(current);
@@ -169,6 +215,5 @@ document.addEventListener("keydown", (event)=>{
 });
 
 pickLocation(current);
-drawPiece(current);
 update();
 
